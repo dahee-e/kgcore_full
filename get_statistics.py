@@ -26,7 +26,7 @@ def degree(hypergraph, node):
 
 
 # Usage example
-input_file = './datasets/real/MAG/network.hyp'
+input_file = './datasets/real/contact/network.hyp'
 hypergraph, E = load_hypergraph(input_file)
 
 print(len(hypergraph.nodes()))
@@ -38,6 +38,7 @@ for e in E:
 
 print(sum / len(E))
 
+#average cardinality
 sum = 0
 for v in hypergraph.nodes():
     sum = sum + degree(hypergraph, v)

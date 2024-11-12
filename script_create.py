@@ -7,7 +7,7 @@ file  = os.listdir(dir)
 file.remove('.DS_Store')
 file.remove('MAG')
 
-file = ["walmart"]
+file = ["instacart"]
 for f in file:
     for k in range(2,10):
         for g in range (2,10):

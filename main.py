@@ -54,7 +54,7 @@ with open(output_path, 'w') as output_file:
             output_file.write(f"{key}: {value}\n")
 
     else:
-        output_file.write("Nodes:\n")
+        output_file.write("Nodes:")
         nodes = " ".join(str(node) for node in G)
         output_file.write(nodes + "\n")
 

@@ -2,13 +2,19 @@ import os
 import csv
 import re
 import argparse
+import utils
+
+
 
 # Argument parser for command-line arguments
 parser = argparse.ArgumentParser(description="Extract data from EPA and NPA files and save to CSV")
-parser.add_argument("--directory", help="Path to the directory containing files", default='./datasets/real/contact/')
+parser.add_argument("--directory", help="Path to the directory containing files"
+                    , default='./datasets/real/enron/')
 parser.add_argument("--output", help="Output CSV file name", default='summary.csv')
 args = parser.parse_args()
 
+input_file = args.directory + 'network.hyp'
+hypergraph, E = utils.load_hypergraph(input_file)
 
 # Define the output CSV file path
 output_csv_path = os.path.join(args.directory, args.output)
@@ -51,6 +57,19 @@ for filename in os.listdir(args.directory):
                     nodes = line.split(":")[1].strip().split()
                     nodes = [int(node) for node in nodes]  # Convert nodes to integer list
 
+            average_degree = 0
+            average_cardinality = 0
+            if num_of_nodes == 0 or runtime is None:
+                continue
+            average_cardinality = 0
+            for v in nodes:
+                average_cardinality = average_cardinality + utils.degree(hypergraph, v)
+            average_cardinality = average_cardinality / len(nodes)
+            average_degree = 0
+            for v in nodes:
+                average_degree = average_degree + utils.hyperedges_count(hypergraph, v)
+            average_degree = average_degree / len(nodes)
+
             # Append extracted data to list
             data.append({
                 "algorithm": algorithm,
@@ -58,12 +77,15 @@ for filename in os.listdir(args.directory):
                 "g": g,
                 "# of nodes": num_of_nodes,
                 "runtime": runtime,
+                "average_degree": average_degree,
+                "average_cardinality": average_cardinality,
                 "nodes": nodes
             })
 
+
 # Write the data to a CSV file
 with open(output_csv_path, 'w', newline='') as csvfile:
-    fieldnames = ["algorithm", "k", "g", "# of nodes", "runtime", "nodes"]
+    fieldnames = ["algorithm", "k", "g", "# of nodes", "runtime","average_degree","average_cardinality","nodes"]
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
     writer.writeheader()

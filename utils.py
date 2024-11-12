@@ -36,6 +36,12 @@ def degree(hypergraph, node):
         neighbors.update(hyperedge - {node})  # Collect all nodes in the hyperedge except the current node
     return len(neighbors)
 
+def hyperedges_count(hypergraph, node): # count the number of hyperedges that contain the node
+    hyperedges = list()
+    for hyperedge in hypergraph.nodes[node]['hyperedges']:
+        hyperedges.append(hyperedge)
+    return len(hyperedges)
+
 
 
 def get_induced_subhypergraph(hypergraph, node_set):
