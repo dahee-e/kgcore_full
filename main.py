@@ -2,7 +2,7 @@ import networkx as nx
 import time
 import os
 import argparse
-import NPA
+import NPA_modify as NPA
 import EPA
 import utils
 import decomposition
@@ -11,10 +11,11 @@ import decomposition
 
 
 parser = argparse.ArgumentParser(description="Peeling Algorithm for Hypergraph (k, g)-core")
-parser.add_argument("--algorithm", help="Algorithm to use")
-parser.add_argument("--network", help="Path to the network file",default='./datasets/real/contact/network.hyp')
-parser.add_argument("--k", type=int, help="Value of k")
-parser.add_argument("--g", type=int, help="Value of g")
+parser.add_argument("--algorithm", help="Algorithm to use", choices=["NPA", "EPA", "decom"], default="NPA")
+parser.add_argument("--network", help="Path to the network file"
+                    ,default='./datasets/network.hyp')
+parser.add_argument("--k", type=int, help="Value of k",default=2)
+parser.add_argument("--g", type=int, help="Value of g",default=2)
 args = parser.parse_args()
 
 # Load hypergraph

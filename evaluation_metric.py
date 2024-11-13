@@ -1,6 +1,5 @@
 import os
 import csv
-import re
 import argparse
 import utils
 
@@ -9,7 +8,7 @@ import utils
 # Argument parser for command-line arguments
 parser = argparse.ArgumentParser(description="Extract data from EPA and NPA files and save to CSV")
 parser.add_argument("--directory", help="Path to the directory containing files"
-                    , default='./datasets/real/enron/')
+                    , default='./datasets/')
 parser.add_argument("--output", help="Output CSV file name", default='summary.csv')
 args = parser.parse_args()
 
@@ -62,6 +61,7 @@ for filename in os.listdir(args.directory):
             if num_of_nodes == 0 or runtime is None:
                 continue
             average_cardinality = 0
+            induced_subhypergraph = utils.get_induced_subhypergraph(hypergraph, set(nodes))
             for v in nodes:
                 average_cardinality = average_cardinality + utils.degree(hypergraph, v)
             average_cardinality = average_cardinality / len(nodes)
@@ -78,20 +78,20 @@ for filename in os.listdir(args.directory):
                 "# of nodes": num_of_nodes,
                 "runtime": runtime,
                 "average_degree": average_degree,
-                "average_cardinality": average_cardinality,
-                "nodes": nodes
+                "average_cardinality": average_cardinality
+                # ,"nodes": nodes
             })
 
 
 # Write the data to a CSV file
 with open(output_csv_path, 'w', newline='') as csvfile:
-    fieldnames = ["algorithm", "k", "g", "# of nodes", "runtime","average_degree","average_cardinality","nodes"]
+    fieldnames = ["algorithm", "k", "g", "# of nodes", "runtime","average_degree","average_cardinality"]
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
     writer.writeheader()
     for row in data:
         # Join nodes list as a space-separated string for CSV
-        row["nodes"] = ' '.join(map(str, row["nodes"]))
+        # row["nodes"] = ' '.join(map(str, row["nodes"]))
         writer.writerow(row)
 
 print(f"Data successfully written to {output_csv_path}")
