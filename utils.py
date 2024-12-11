@@ -42,7 +42,12 @@ def hyperedges_count(hypergraph, node): # count the number of hyperedges that co
         hyperedges.append(hyperedge)
     return len(hyperedges)
 
-
+def edge_count(nodes,hyperedges): # Find a hyperedge that contains node
+    edges = list()
+    for hyperedge in hyperedges:
+        if len(hyperedge & set(nodes)) >= 2:
+            edges.append(hyperedge)
+    return len(edges)
 
 def get_induced_subhypergraph(hypergraph, node_set):
     subhypergraph = nx.Graph()

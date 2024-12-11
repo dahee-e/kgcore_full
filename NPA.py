@@ -3,8 +3,9 @@ import time
 import os
 import argparse
 import utils
+from queue import Queue
 
-def construct_neighbor_occurrence_map(hypergraph, g):
+def construct_neighbor_occurrence_map(hypergraph, g, k, VQ):
     neighbor_occurrence_map = {}
 
     for node in hypergraph.nodes:
@@ -22,32 +23,28 @@ def construct_neighbor_occurrence_map(hypergraph, g):
 
         # Add the filtered map to the overall map
         neighbor_occurrence_map[node] = filtered_neighbors
-
-    return neighbor_occurrence_map
+        if len(neighbor_occurrence_map.get(node)) < k:
+            VQ.put(node)
+    return neighbor_occurrence_map,VQ
 
 
 def run(hypergraph, k, g):
 
     # Step 2: Initialization
     H = set(hypergraph.nodes())
-    neighbor_occurrence_map = construct_neighbor_occurrence_map(hypergraph, g)
-
-    changed = True
-    while changed:
-        changed = False
-
-        marked_nodes = set()
-
-        for v in H:
-            if len(neighbor_occurrence_map.get(v)) < k:
-                marked_nodes.add(v)
-                changed = True
-
-        for w in marked_nodes:
-            H.remove(w)
-            neighbour_list = neighbor_occurrence_map.get(w)
-            for nid in neighbour_list:
-                neighbor_occurrence_map[nid].pop(w)
-            hypergraph.remove_node(w)
+    VQ = Queue()
+    visited = set()
+    neighbor_occurrence_map, VQ = construct_neighbor_occurrence_map(hypergraph, g,k,VQ)
+    while not VQ.empty():
+        v = VQ.get()
+        if v not in H:
+            continue
+        H.remove(v)
+        neighbour_list = neighbor_occurrence_map.get(v)
+        for nid in neighbour_list:
+            neighbor_occurrence_map[nid].pop(v)
+            if len(neighbor_occurrence_map.get(nid)) < k :
+                VQ.put(nid)
+        del neighbor_occurrence_map[v]
 
     return hypergraph.subgraph(H)
