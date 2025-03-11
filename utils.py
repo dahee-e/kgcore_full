@@ -30,25 +30,23 @@ def load_hypergraph(file_path):
 
 
 
-def degree(hypergraph, node):
+def neighbors(hypergraph, node):
     neighbors = set()
     for hyperedge in hypergraph.nodes[node]['hyperedges']:
         neighbors.update(hyperedge - {node})  # Collect all nodes in the hyperedge except the current node
     return len(neighbors)
-
-def hyperedges_count(hypergraph, node): # count the number of hyperedges that contain the node
-    hyperedges = list()
-    for hyperedge in hypergraph.nodes[node]['hyperedges']:
-        hyperedges.append(hyperedge)
-    return len(hyperedges)
+def hyperedges_count(hypergraph, node): # count the number of hyperedges that contain the node = degree
+    return len(hypergraph.nodes[node]['hyperedges'])
 
 def edge_count(nodes,hyperedges): # Find a hyperedge that contains node
     edges = list()
     for hyperedge in hyperedges:
-        if len(hyperedge & set(nodes)) >= 2:
-            edges.append(hyperedge)
-    return len(edges)
 
+        if len(set(nodes) - hyperedge) < len(nodes) :
+            edges.append(hyperedge)
+    # return len(edges)
+
+    return 0
 def get_induced_subhypergraph(hypergraph, node_set):
     subhypergraph = nx.Graph()
     for node in node_set:

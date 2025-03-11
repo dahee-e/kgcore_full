@@ -4,7 +4,7 @@ import os
 import argparse
 import utils
 from queue import Queue
-
+import sys
 def getNbrMap(hypergraph, node, g):
     cnt = {}
 
@@ -20,16 +20,23 @@ def run(hypergraph, k, g):
     S = {}
     VQ = Queue()
     VQ1 = set()
+    time_report = 0
 
     for v in H:
+        time2 = time.time()
         ng = getNbrMap(hypergraph, v, g)
+        time3 = time.time()
+        time_report += time3 - time2
         S[v] = len(ng)
         if S[v] < k:
             VQ.put(v)
             VQ1.add(v)
     while not VQ.empty():
         v = VQ.get()
+        time2 = time.time()
         ng = getNbrMap(hypergraph, v, g)
+        time3 = time.time()
+        time_report += time3 - time2
         H.remove(v)
         del S[v]
         for w in ng:
@@ -39,4 +46,4 @@ def run(hypergraph, k, g):
                     VQ.put(w)
                     VQ1.add(w)
 
-    return hypergraph.subgraph(H)
+    return hypergraph.subgraph(H), time_report

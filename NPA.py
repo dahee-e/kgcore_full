@@ -4,7 +4,7 @@ import os
 import argparse
 import utils
 from queue import Queue
-
+import sys
 def construct_neighbor_occurrence_map(hypergraph, g, k, VQ):
     neighbor_occurrence_map = {}
 
@@ -33,7 +33,6 @@ def run(hypergraph, k, g):
     # Step 2: Initialization
     H = set(hypergraph.nodes())
     VQ = Queue()
-    visited = set()
     neighbor_occurrence_map, VQ = construct_neighbor_occurrence_map(hypergraph, g,k,VQ)
     while not VQ.empty():
         v = VQ.get()
@@ -47,4 +46,4 @@ def run(hypergraph, k, g):
                 VQ.put(nid)
         del neighbor_occurrence_map[v]
 
-    return hypergraph.subgraph(H)
+    return hypergraph.subgraph(H),neighbor_occurrence_map
