@@ -5,74 +5,139 @@ import argparse
 import NPA
 import EPA
 import utils
-import decomposition
+import BCA
 import tracemalloc
 import psutil
+import decomposition as decompose
 import linecache
-
-
+from memory_profiler import profile
 
 parser = argparse.ArgumentParser(description="Peeling Algorithm for Hypergraph (k, g)-core")
-parser.add_argument("--algorithm", help="Algorithm to use", choices=["NPA", "EPA", "decom"], default="decom")
-parser.add_argument("--network", help="Path to the network file"
-                    ,default='./ex.hyp')
-parser.add_argument("--k", type=int, help="Value of k",default=2)
-parser.add_argument("--g", type=int, help="Value of g",default=18)
-args = parser.parse_args()
+parser.add_argument("--algorithm", help="Algorithm to use", choices=["NPA", "EPA", "BCA"], default="BCA")
+parser.add_argument("--network", help="Path to the network file", default='./datasets/real/instacart/network.hyp')
+parser.add_argument("--k", type=int, help="Value of k", default=3)
+parser.add_argument("--g", type=int, help="Value of g", default=30000)
+parser.add_argument("--parallel", action="store_true", help="Enable parallel processing for BCA algorithm")
+parser.add_argument("--max_workers", type=int,
+                    help="Maximum number of workers for parallel processing (default: CPU count)", default=None)
+parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
+def main():
+    args = parser.parse_args()
 
-process = psutil.Process(os.getpid())
-memory_before = process.memory_info().rss / (1024 * 1024)  # Convert to MB
-# Load hypergraph
-hypergraph, E = utils.load_hypergraph(args.network)
+    # Load hypergraph
+    hypergraph, E = utils.load_hypergraph(args.network)
 
-if args.algorithm == "NPA":
+    # Start memory tracing
+    tracemalloc.start()
+
+    result_nodes = None          # iterable of node ids
+    result_map = None            # dict like {(k,g): set(nodes)}
     start_time = time.time()
-    G,NOM = NPA.run(hypergraph, args.k, args.g)
-    end_time = time.time()
-elif args.algorithm == "EPA":
-    start_time = time.time()
-    G = EPA.run(hypergraph, args.k, args.g)
-    end_time = time.time()
-elif args.algorithm == "decom":
-    start_time = time.time()
-    G = decomposition.run(hypergraph)
-    end_time = time.time()
+    end_time = start_time
 
+    # Algorithm execution
+    if args.algorithm == "NPA":
+        if args.verbose:
+            print(f"Running NPA algorithm with k={args.k}, g={args.g}")
+        start_time = time.time()
+        G, NOM = NPA.run(hypergraph, args.k, args.g)   # G: 노드 집합이라 가정
+        end_time = time.time()
+        result_nodes = G
+        result_map = None
 
-memory_after = process.memory_info().rss / (1024 * 1024)  # Convert to MB
-memory_usage = memory_after - memory_before  # Calculate memory used
+    elif args.algorithm == "EPA":
+        if args.verbose:
+            print(f"Running EPA algorithm with k={args.k}, g={args.g}")
+        start_time = time.time()
+        G = EPA.run(hypergraph, args.k, args.g)        # G: 노드 집합
+        end_time = time.time()
+        result_nodes = G
+        result_map = None
 
+    elif args.algorithm == "BCA":
+        if args.parallel:
+            if args.verbose:
+                print(f"Running BCA algorithm in parallel mode with max_workers={args.max_workers}")
+            start_time = time.time()
+            D = BCA.run_parallel_by_g(
+                hypergraph,
+                max_workers=args.max_workers,
+                use_processes=True
+            )  # D: {(k,g): set(nodes)}
+            end_time = time.time()
+            result_map = D
+            # 모든 (k,g)-core 노드 합집합 (필요 시 다른 정책 가능)
+            result_nodes = set()
+            for s in D.values():
+                result_nodes |= s
+        else:
+            if args.verbose:
+                print(f"Running BCA (single) via decompose.run()")
+            start_time = time.time()
+            D = decompose.run(hypergraph)              # G: 노드 집합이라 가정
+            end_time = time.time()
+            result_map = D
+            # 모든 (k,g)-core 노드 합집합 (필요 시 다른 정책 가능)
+            result_nodes = set()
+            for s in D.values():
+                result_nodes |= s
 
-# Write results to file
-output_dir = os.path.dirname(args.network)
+    # Get memory usage
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-if args.algorithm == "decom":
-    output_filename = f"decomposition_mod.dat"
-else:
-    output_filename = f"{args.algorithm}_{args.k}_{args.g}_core.dat"
-output_path = os.path.join(output_dir, output_filename)
+    # Print memory usage
+    print(f"Current memory usage: {current / 1024 / 1024:.2f} MB")
+    print(f"Peak memory usage: {peak / 1024 / 1024:.2f} MB")
+    print(f"Execution time: {end_time - start_time:.2f} seconds")
 
-with open(output_path, 'w') as output_file:
-    # Write size of nodes
-    if args.algorithm != "decom":
-        output_file.write(f"Num of nodes: {str(len(G))}\n")
-    # Write running time
-    output_file.write(f"Run Time: {end_time - start_time}\n")
-    # Write nodes
-    if args.algorithm == "decom":
-        output_file.write("Result\n")
-        for key, value in G.items():
-            output_file.write(f"{key}: {value}\n")
+    # Prepare output
+    output_dir = os.path.dirname(args.network)
 
+    # 파일명 규칙 통일
+    if args.algorithm == "BCA":
+        if args.parallel:
+            output_filename = f"{args.algorithm}_parallel_workers_{args.max_workers}_result.dat"
+        else:
+            output_filename = f"{args.algorithm}_result.dat"   
     else:
-        output_file.write("Nodes:")
-        nodes = " ".join(str(node) for node in G)
-        output_file.write(nodes + "\n")
+        output_filename = f"{args.algorithm}_{args.k}_{args.g}_core.dat"
 
-    #write memory usage
-    output_file.write("Memory Usage(MB): ")
-    output_file.write(f"{memory_usage}\n")
+    output_path = os.path.join(output_dir, output_filename)
+
+    # Write results to file
+    with open(output_path, 'w') as f:
+        f.write(f"Algorithm: {args.algorithm}\n")
+        if args.algorithm in ("NPA", "EPA"):
+            f.write(f"Parameters: k={args.k}, g={args.g}\n")
+        elif args.algorithm == "BCA":
+            if args.parallel:
+                f.write(f"Mode: parallel (max_workers={args.max_workers if args.max_workers else 'CPU count'})\n")
+            else:
+                f.write(f"Mode: single\n")
+
+        # 결과 요약
+        if result_nodes is not None:
+            f.write(f"Num of nodes: {len(result_nodes)}\n")
+
+        # 성능
+        f.write(f"Run Time: {end_time - start_time:.4f} seconds\n")
+        f.write(f"Memory Usage(MB): {peak / 1024 / 1024:.2f} MB\n")
+        f.write("=" * 50 + "\n")
+
+        # 상세 결과
+        if result_map:  # BCA 병렬: (k,g)별로 출력
+            f.write("Results (k,g -> nodes):\n")
+            for (k, g), nodes in sorted(result_map.items()):
+                f.write(f"({k},{g}): ")
+                f.write(" ".join(map(str, sorted(nodes))) + "\n")
+        elif result_nodes is not None:
+            f.write("Nodes: ")
+            f.write(" ".join(map(str, sorted(result_nodes))) + "\n")
+
+    print(f"Results written to {output_path}")
 
 
-print(f"Results written to {output_path}")
+if __name__ == "__main__":
+    main()
